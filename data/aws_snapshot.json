@@ -1,0 +1,23 @@
+{
+  "storage_buckets": [
+    {"name": "prod-customer-data", "public_access": false, "encryption": true},
+    {"name": "legacy-export-bucket", "public_access": true, "encryption": false}
+  ],
+  "security_groups": [
+    {
+      "id": "sg-001",
+      "ingress": [
+        {"port": 22, "cidr": "0.0.0.0/0"},
+        {"port": 443, "cidr": "0.0.0.0/0"}
+      ]
+    }
+  ],
+  "iam_policies": [
+    {"name": "AdminWildcardPolicy", "actions": ["*"], "resources": ["*"]},
+    {"name": "ReadOnlyLogs", "actions": ["logs:GetLogEvents"], "resources": ["arn:aws:logs:us-east-1:123456789012:log-group/app"]}
+  ],
+  "account_logging": {
+    "cloudtrail_enabled": false,
+    "log_retention_days": 30
+  }
+}
