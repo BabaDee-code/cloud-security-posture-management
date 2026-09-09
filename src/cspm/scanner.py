@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 ADMIN_PORTS = {22, 3389}
+INTERNET_CIDRS = {"0.0.0.0/0", "::/0"}
 
 
 def scan_snapshot(snapshot: dict[str, Any]) -> list[dict[str, str]]:
@@ -31,13 +32,63 @@ def _scan_security_groups(groups: list[dict[str, Any]]) -> list[dict[str, str]]:
     for group in groups:
         resource_id = str(group.get("id", "unknown-sg"))
         for rule in group.get("ingress", []):
-            port = int(rule.get("port", 0))
             cidr = str(rule.get("cidr", ""))
-            if cidr == "0.0.0.0/0" and port in ADMIN_PORTS:
-                findings.append(_finding(resource_id, "critical", f"Security group allows internet access to administrative port {port}", "Restrict administrative access to approved corporate ranges or a managed access service."))
-            elif cidr == "0.0.0.0/0":
-                findings.append(_finding(resource_id, "medium", f"Security group allows internet access to port {port}", "Confirm business need and restrict exposure where possible."))
+            if cidr not in INTERNET_CIDRS:
+                continue
+
+            port_range = _port_range(rule)
+            if port_range is None:
+                continue
+
+            start_port, end_port = port_range
+            exposed_admin_ports = sorted(port for port in ADMIN_PORTS if start_port <= port <= end_port)
+
+            if exposed_admin_ports:
+                admin_ports = ", ".join(str(port) for port in exposed_admin_ports)
+                findings.append(
+                    _finding(
+                        resource_id,
+                        "critical",
+                        f"Security group allows internet access to administrative port(s) {admin_ports}",
+                        "Restrict administrative access to approved corporate ranges or a managed access service.",
+                    )
+                )
+            else:
+                port_label = str(start_port) if start_port == end_port else f"{start_port}-{end_port}"
+                findings.append(
+                    _finding(
+                        resource_id,
+                        "medium",
+                        f"Security group allows internet access to port(s) {port_label}",
+                        "Confirm business need and restrict exposure where possible.",
+                    )
+                )
     return findings
+
+
+def _port_range(rule: dict[str, Any]) -> tuple[int, int] | None:
+    """Normalize supported ingress rule shapes into an inclusive port range."""
+    if "port" in rule:
+        port = _as_port(rule.get("port"))
+        return (port, port) if port is not None else None
+
+    start_port = _as_port(rule.get("from_port"))
+    end_port = _as_port(rule.get("to_port"))
+    if start_port is None or end_port is None:
+        return None
+    if start_port > end_port:
+        start_port, end_port = end_port, start_port
+    return start_port, end_port
+
+
+def _as_port(value: Any) -> int | None:
+    try:
+        port = int(value)
+    except (TypeError, ValueError):
+        return None
+    if 0 <= port <= 65535:
+        return port
+    return None
 
 
 def _scan_iam_policies(policies: list[dict[str, Any]]) -> list[dict[str, str]]:
