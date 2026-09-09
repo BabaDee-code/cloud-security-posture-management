@@ -51,7 +51,17 @@ def test_non_admin_internet_range_is_medium():
 
 
 def test_private_admin_range_does_not_generate_exposure_finding():
-    findings = scan_snapshot({"security_groups": [{"id": "sg-private", "ingress": [{"from_port": 20, "to_port": 25, "cidr": "10.0.0.0/8"}]}]})
+    findings = scan_snapshot(
+        {
+            "security_groups": [
+                {
+                    "id": "sg-private",
+                    "ingress": [{"from_port": 20, "to_port": 25, "cidr": "10.0.0.0/8"}],
+                }
+            ],
+            "account_logging": {"cloudtrail_enabled": True, "log_retention_days": 90},
+        }
+    )
     assert findings == []
 
 
