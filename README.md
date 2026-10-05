@@ -9,10 +9,14 @@ A lightweight cloud security posture management project that scans cloud configu
 - Cloud configuration risk assessment
 - S3/public storage exposure checks
 - IAM policy risk detection
-- Security group exposure analysis
+- Dual-stack IPv4/IPv6 security group exposure analysis
 - Encryption and logging validation
 - Risk scoring and remediation recommendations
 - Unit tests and CI validation
+
+## Security-group exposure model
+
+Internet-wide ingress is evaluated for both IP families: `0.0.0.0/0` for IPv4 and `::/0` for IPv6. Administrative ports such as SSH (22) and RDP (3389) are treated as critical when exposed through either address family; other internet-wide ports are surfaced for business-need review. This avoids an IPv4-only posture assumption in dual-stack cloud environments.
 
 ## Repository structure
 
