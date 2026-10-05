@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 ADMIN_PORTS = {22, 3389}
+PUBLIC_CIDRS = {"0.0.0.0/0", "::/0"}
 
 
 def scan_snapshot(snapshot: dict[str, Any]) -> list[dict[str, str]]:
@@ -33,9 +34,9 @@ def _scan_security_groups(groups: list[dict[str, Any]]) -> list[dict[str, str]]:
         for rule in group.get("ingress", []):
             port = int(rule.get("port", 0))
             cidr = str(rule.get("cidr", ""))
-            if cidr == "0.0.0.0/0" and port in ADMIN_PORTS:
+            if cidr in PUBLIC_CIDRS and port in ADMIN_PORTS:
                 findings.append(_finding(resource_id, "critical", f"Security group allows internet access to administrative port {port}", "Restrict administrative access to approved corporate ranges or a managed access service."))
-            elif cidr == "0.0.0.0/0":
+            elif cidr in PUBLIC_CIDRS:
                 findings.append(_finding(resource_id, "medium", f"Security group allows internet access to port {port}", "Confirm business need and restrict exposure where possible."))
     return findings
 
